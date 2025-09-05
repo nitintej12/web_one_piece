@@ -353,53 +353,49 @@
             
             console.log('HTML sample:', html.substring(0, 500));
             
-            // Multiple extraction patterns - be very aggressive
-            const patterns = [
-                // Direct image URLs
-                /https?:\/\/[^"'\s<>]+\.(?:jpg|jpeg|png|webp)(?:\?[^"'\s<>]*)?/gi,
-                // Src attributes
-                /src=["']([^"']*\.(?:jpg|jpeg|png|webp)(?:\?[^"']*)?[^"']*)["']/gi,
-                // Data-src for lazy loading
-                /data-src=["']([^"']*\.(?:jpg|jpeg|png|webp)(?:\?[^"']*)?[^"']*)["']/gi,
-                // Data-lazy-src
-                /data-lazy-src=["']([^"']*\.(?:jpg|jpeg|png|webp)(?:\?[^"']*)?[^"']*)["']/gi,
-                // Data-original
-                /data-original=["']([^"']*\.(?:jpg|jpeg|png|webp)(?:\?[^"']*)?[^"']*)["']/gi,
-                // Any attribute containing image URLs
-                /=["']([^"']*https?:\/\/[^"']*\.(?:jpg|jpeg|png|webp)(?:\?[^"']*)?[^"']*)["']/gi
-            ];
+            // Look specifically for readonepiece.com CDN images
+            const cdnPattern = /https:\/\/cdn\.readonepiece\.com\/file\/mangap\/[^"'\s<>]+\.jpg/gi;
+            const cdnMatches = html.match(cdnPattern) || [];
+            console.log('Found CDN images:', cdnMatches.length);
             
-            patterns.forEach((pattern, index) => {
-                console.log(`Trying pattern ${index + 1}...`);
-                const matches = html.matchAll(pattern);
-                let patternCount = 0;
-                for (const match of matches) {
-                    let url = match[1] || match[0];
-                    url = cleanUrl(url, baseUrl);
-                    
-                    if (url && isValidMangaImage(url)) {
-                        imageUrls.push(url);
-                        patternCount++;
-                    }
+            cdnMatches.forEach(url => {
+                if (isValidMangaImage(url)) {
+                    imageUrls.push(url);
                 }
-                console.log(`Pattern ${index + 1} found ${patternCount} images`);
             });
             
-            // Also look for JavaScript variables containing image arrays
-            const jsImagePattern = /(?:images|pages|imgs)\s*[:=]\s*\[([^\]]+)\]/gi;
-            const jsMatches = html.matchAll(jsImagePattern);
-            for (const match of jsMatches) {
-                const jsArray = match[1];
-                const urlMatches = jsArray.match(/["']([^"']*\.(?:jpg|jpeg|png|webp)[^"']*)["']/gi);
-                if (urlMatches) {
-                    urlMatches.forEach(url => {
-                        url = url.replace(/["']/g, '');
+            // If no CDN images found, try general patterns
+            if (imageUrls.length === 0) {
+                console.log('No CDN images found, trying general patterns...');
+                
+                const patterns = [
+                    // Direct image URLs
+                    /https?:\/\/[^"'\s<>]+\.(?:jpg|jpeg|png|webp)(?:\?[^"'\s<>]*)?/gi,
+                    // Src attributes
+                    /src=["']([^"']*\.(?:jpg|jpeg|png|webp)(?:\?[^"']*)?[^"']*)["']/gi,
+                    // Data-src for lazy loading
+                    /data-src=["']([^"']*\.(?:jpg|jpeg|png|webp)(?:\?[^"']*)?[^"']*)["']/gi,
+                    // Data-lazy-src
+                    /data-lazy-src=["']([^"']*\.(?:jpg|jpeg|png|webp)(?:\?[^"']*)?[^"']*)["']/gi,
+                    // Data-original
+                    /data-original=["']([^"']*\.(?:jpg|jpeg|png|webp)(?:\?[^"']*)?[^"']*)["']/gi
+                ];
+                
+                patterns.forEach((pattern, index) => {
+                    console.log(`Trying pattern ${index + 1}...`);
+                    const matches = html.matchAll(pattern);
+                    let patternCount = 0;
+                    for (const match of matches) {
+                        let url = match[1] || match[0];
                         url = cleanUrl(url, baseUrl);
+                        
                         if (url && isValidMangaImage(url)) {
                             imageUrls.push(url);
+                            patternCount++;
                         }
-                    });
-                }
+                    }
+                    console.log(`Pattern ${index + 1} found ${patternCount} images`);
+                });
             }
             
             // Remove duplicates and sort
@@ -434,8 +430,13 @@
             const hasValidExt = validExts.some(ext => url.toLowerCase().includes(ext));
             if (!hasValidExt) return false;
             
+            // If it's from the CDN, it's probably a manga page
+            if (url.includes('cdn.readonepiece.com/file/mangap/')) {
+                return true;
+            }
+            
             // Filter out obvious ads and tiny images - be less strict
-            const badKeywords = ['banner', 'popup', 'logo-', 'favicon'];
+            const badKeywords = ['banner', 'popup', 'logo-', 'favicon', 'advertisement'];
             const isAd = badKeywords.some(keyword => url.toLowerCase().includes(keyword));
             
             // Also skip very small images based on URL patterns
