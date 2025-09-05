@@ -121,30 +121,60 @@
             error.style.display = 'none';
             
             try {
+                // Try multiple URL formats for different chapters
                 const chapterNum = String(chapter).padStart(3, '0');
-                const sourceUrl = `https://ww12.readonepiece.com/chapter/one-piece-digital-colored-comics-chapter-${chapterNum}/`;
+                const possibleUrls = [
+                    `https://ww12.readonepiece.com/chapter/one-piece-digital-colored-comics-chapter-${chapterNum}/`,
+                    `https://ww12.readonepiece.com/chapter/one-piece-chapter-${chapter}/`,
+                    `https://ww12.readonepiece.com/chapter/one-piece-${chapter}/`,
+                    `https://ww12.readonepiece.com/manga/one-piece-chapter-${chapter}/`
+                ];
+                
+                let html = null;
+                let workingUrl = null;
                 
                 console.log('⚡ Loading chapter:', chapter);
                 
-                // Use the working proxy with speed optimizations
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 sec timeout
-                
-                const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(sourceUrl)}`, {
-                    signal: controller.signal,
-                    headers: {
-                        'Cache-Control': 'max-age=300', // Cache for 5 minutes
-                        'Accept': 'application/json',
-                        'User-Agent': 'OnePieceReader/1.0'
+                // Try each URL format until one works
+                for (const sourceUrl of possibleUrls) {
+                    console.log('Trying URL:', sourceUrl);
+                    
+                    try {
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 sec per attempt
+                        
+                        const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(sourceUrl)}`, {
+                            signal: controller.signal,
+                            headers: {
+                                'Accept': 'application/json',
+                                'User-Agent': 'OnePieceReader/1.0'
+                            }
+                        });
+                        clearTimeout(timeoutId);
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            const testHtml = data.contents;
+                            
+                            if (testHtml && testHtml.length > 1000) {
+                                // Quick check if this URL has manga images
+                                const hasImages = /https:\/\/cdn\.readonepiece\.com\/file\/mangap\//.test(testHtml);
+                                if (hasImages) {
+                                    html = testHtml;
+                                    workingUrl = sourceUrl;
+                                    console.log('✅ Found working URL:', sourceUrl);
+                                    break;
+                                }
+                            }
+                        }
+                    } catch (urlError) {
+                        console.log('❌ URL failed:', sourceUrl, urlError.message);
+                        continue;
                     }
-                });
-                clearTimeout(timeoutId);
+                }
                 
-                const data = await response.json();
-                const html = data.contents;
-                
-                if (!html || html.length < 1000) {
-                    throw new Error('Could not fetch chapter data');
+                if (!html) {
+                    throw new Error(`Chapter ${chapter} not found. Try different numbers like: 1, 100, 500, 800, 1000, 1050, 1100`);
                 }
                 
                 // Extract image URLs
@@ -169,17 +199,45 @@
         
         function extractImages(html, startTime) {
             console.log('🔍 Extracting images...');
+            let matches = [];
             
-            // Fast regex extraction - single pass
-            const cdnPattern = /https:\/\/cdn\.readonepiece\.com\/file\/mangap\/[^"'\s]+\.jpg/gi;
-            const matches = [...new Set(html.match(cdnPattern) || [])]; // Remove duplicates immediately
+            // Try multiple patterns for different image hosting
+            const patterns = [
+                // Primary CDN pattern
+                /https:\/\/cdn\.readonepiece\.com\/file\/mangap\/[^"'\s]+\.(?:jpg|jpeg|png|webp)/gi,
+                // Alternative CDN patterns
+                /https:\/\/[^"'\s]*cdn[^"'\s]*\/[^"'\s]*one[^"'\s]*piece[^"'\s]*\.(?:jpg|jpeg|png|webp)/gi,
+                // General manga image patterns
+                /https:\/\/[^"'\s]+\/(?:manga|chapter|page)[^"'\s]*\.(?:jpg|jpeg|png|webp)/gi,
+                // Fallback - any large image
+                /https:\/\/[^"'\s]+\.(?:jpg|jpeg|png|webp)(?:\?[^"'\s]*)?/gi
+            ];
+            
+            for (const pattern of patterns) {
+                const patternMatches = html.match(pattern) || [];
+                if (patternMatches.length > 5) { // If we find a good amount, use this pattern
+                    matches = patternMatches;
+                    break;
+                }
+            }
+            
+            // Remove duplicates and filter out small/ad images
+            matches = [...new Set(matches)].filter(url => {
+                const lowerUrl = url.toLowerCase();
+                return !lowerUrl.includes('ad') && 
+                       !lowerUrl.includes('banner') && 
+                       !lowerUrl.includes('logo') &&
+                       !lowerUrl.includes('thumb');
+            });
             
             console.log(`📸 Found ${matches.length} images in ${(performance.now() - startTime).toFixed(0)}ms`);
             
-            // Fast sort using numeric extraction
+            // Smart sort - try to extract page numbers
             return matches.sort((a, b) => {
-                const aNum = parseInt(a.split('/').pop().split('.')[0]) || 999;
-                const bNum = parseInt(b.split('/').pop().split('.')[0]) || 999;
+                const aNum = parseInt(a.match(/(\d+)\.(?:jpg|jpeg|png|webp)/i)?.[1] || 
+                                    a.match(/\/(\d+)[^\/]*$/)?.[1] || '999');
+                const bNum = parseInt(b.match(/(\d+)\.(?:jpg|jpeg|png|webp)/i)?.[1] || 
+                                    b.match(/\/(\d+)[^\/]*$/)?.[1] || '999');
                 return aNum - bNum;
             });
         }
