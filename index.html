@@ -51,6 +51,12 @@
             margin-top: 20px;
             font-size: 16px;
         }
+        
+        .loading-details {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #ccc;
+        }
 
         .error {
             color: #ff4444;
@@ -98,7 +104,10 @@
             <br>
             <button onclick="loadChapter()">Read Chapter</button>
         </div>
-        <div class="loading" id="loading" style="display: none;">Loading...</div>
+        <div class="loading" id="loading" style="display: none;">
+            Loading chapter...
+            <div class="loading-details" id="loadingDetails"></div>
+        </div>
         <div class="error" id="error"></div>
     </div>
 
@@ -125,21 +134,60 @@
                 
                 console.log('⚡ Fast-loading chapter:', chapter);
                 
-                // Use faster proxy with timeout
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+                // Try multiple proxy services
+                const proxies = [
+                    `https://corsproxy.io/?${encodeURIComponent(sourceUrl)}`,
+                    `https://api.allorigins.win/get?url=${encodeURIComponent(sourceUrl)}`,
+                    `https://proxy.cors.sh/${sourceUrl}`,
+                    `https://cors-anywhere.herokuapp.com/${sourceUrl}`
+                ];
                 
-                const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(sourceUrl)}`, {
-                    signal: controller.signal,
-                    headers: { 'Cache-Control': 'no-cache' }
-                });
-                clearTimeout(timeoutId);
+                let html = null;
+                let lastError = null;
                 
-                const data = await response.json();
-                const html = data.contents;
+                for (let i = 0; i < proxies.length; i++) {
+                    const proxyUrl = proxies[i];
+                    const proxyName = proxyUrl.includes('corsproxy.io') ? 'CorsProxy' : 
+                                     proxyUrl.includes('allorigins.win') ? 'AllOrigins' :
+                                     proxyUrl.includes('cors.sh') ? 'CorsProxy.sh' : 'Cors-Anywhere';
+                    
+                    try {
+                        document.getElementById('loadingDetails').textContent = `Trying ${proxyName} (${i + 1}/${proxies.length})...`;
+                        console.log('Trying proxy:', proxyUrl.split('?')[0]);
+                        
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), 6000);
+                        
+                        const response = await fetch(proxyUrl, {
+                            signal: controller.signal,
+                            headers: { 
+                                'User-Agent': 'Mozilla/5.0 (compatible; Onepiece-Reader/1.0)'
+                            }
+                        });
+                        clearTimeout(timeoutId);
+                        
+                        if (response.ok) {
+                            if (proxyUrl.includes('allorigins.win')) {
+                                const data = await response.json();
+                                html = data.contents;
+                            } else {
+                                html = await response.text();
+                            }
+                            
+                            if (html && html.length > 1000) {
+                                console.log('✅ Proxy success:', proxyUrl.split('?')[0]);
+                                break;
+                            }
+                        }
+                    } catch (error) {
+                        console.log('❌ Proxy failed:', error.message);
+                        lastError = error;
+                        continue;
+                    }
+                }
                 
                 if (!html || html.length < 1000) {
-                    throw new Error('Could not fetch chapter data');
+                    throw new Error(`All proxy services failed. Try chapter numbers like: 1000, 1050, 900, 800, 500`);
                 }
                 
                 // Extract image URLs
