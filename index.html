@@ -489,22 +489,26 @@
                             ${url}
                         </a>
                         <div style="margin-top: 10px;">
-                            <button onclick="openInNewTab('${url}')" style="background: #ff6b35; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
-                                Open Page ${index + 1}
-                            </button>
+                            <a href="${url}" target="_blank" style="display: inline-block; background: #ff6b35; color: white; text-decoration: none; padding: 8px 16px; border-radius: 4px; font-size: 14px;">
+                                📖 View Page ${index + 1}
+                            </a>
                         </div>
                     </div>
                 `).join('')}
                 <div style="text-align: center; padding: 20px; color: #ccc; border-top: 1px solid #555; margin-top: 20px;">
                     <p><strong>Alternative Solutions:</strong></p>
-                    <div style="margin: 15px 0;">
-                        <button onclick="downloadAllImages(${JSON.stringify(imageUrls)}, ${chapter})" 
-                                style="background: #4CAF50; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; margin: 5px;">
-                            📥 Download All Images
+                    <div style="margin: 15px 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;">
+                        <button onclick="createImageGallery(${JSON.stringify(imageUrls)}, ${chapter})" 
+                                style="background: #4CAF50; color: white; border: none; padding: 12px 20px; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                            🖼️ View as Gallery
                         </button>
-                        <button onclick="openAllTabs(${JSON.stringify(imageUrls)})" 
-                                style="background: #2196F3; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; margin: 5px;">
-                            🗂️ Open All in New Tabs
+                        <button onclick="copyAllUrls(${JSON.stringify(imageUrls)})" 
+                                style="background: #FF9800; color: white; border: none; padding: 12px 20px; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                            📋 Copy All URLs
+                        </button>
+                        <button onclick="openFirstFew(${JSON.stringify(imageUrls)}, 5)" 
+                                style="background: #2196F3; color: white; border: none; padding: 12px 20px; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                            📱 Open First 5
                         </button>
                     </div>
                     <p style="font-size: 14px; margin-top: 15px;">Or use the original script on your local machine for direct viewing.</p>
@@ -512,39 +516,96 @@
             `;
         }
         
-        function openInNewTab(url) {
-            window.open(url, '_blank');
+        function createImageGallery(imageUrls, chapter) {
+            const newWindow = window.open('', '_blank');
+            newWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>One Piece Chapter ${chapter}</title>
+                    <style>
+                        body { 
+                            margin: 0; 
+                            padding: 0; 
+                            background: #000; 
+                            text-align: center; 
+                        }
+                        .header {
+                            background: #333;
+                            color: #ff6b35;
+                            padding: 10px;
+                            position: sticky;
+                            top: 0;
+                            z-index: 100;
+                        }
+                        img { 
+                            width: 100%; 
+                            height: auto; 
+                            display: block; 
+                            margin: 5px 0;
+                        }
+                        .loading {
+                            color: #fff;
+                            padding: 20px;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">One Piece Chapter ${chapter} - ${imageUrls.length} pages</div>
+                    ${imageUrls.map((url, index) => 
+                        `<img src="${url}" alt="Page ${index + 1}" loading="lazy">`
+                    ).join('')}
+                </body>
+                </html>
+            `);
+            newWindow.document.close();
         }
         
-        function openAllTabs(imageUrls) {
-            if (imageUrls.length > 10) {
-                const confirm = window.confirm(`This will open ${imageUrls.length} tabs. Continue?`);
-                if (!confirm) return;
+        function copyAllUrls(imageUrls) {
+            const urlText = imageUrls.join('\n');
+            
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(urlText).then(() => {
+                    alert(`Copied ${imageUrls.length} image URLs to clipboard!`);
+                }).catch(() => {
+                    fallbackCopy(urlText);
+                });
+            } else {
+                fallbackCopy(urlText);
+            }
+        }
+        
+        function fallbackCopy(text) {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.top = '-1000px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                document.execCommand('copy');
+                alert('URLs copied to clipboard!');
+            } catch (err) {
+                alert('Could not copy URLs. Please copy manually from the links above.');
             }
             
-            imageUrls.forEach((url, index) => {
-                setTimeout(() => {
-                    window.open(url, '_blank');
-                }, index * 200); // Delay to avoid browser blocking
-            });
+            document.body.removeChild(textArea);
         }
         
-        function downloadAllImages(imageUrls, chapter) {
-            console.log('Starting download of', imageUrls.length, 'images');
-            
-            imageUrls.forEach((url, index) => {
+        function openFirstFew(imageUrls, count) {
+            const urlsToOpen = imageUrls.slice(0, count);
+            urlsToOpen.forEach((url, index) => {
                 setTimeout(() => {
-                    const link = document.createElement('a');
-                    link.href = url;
-                    link.download = `one_piece_chapter_${chapter}_page_${index + 1}.jpg`;
-                    link.target = '_blank';
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                }, index * 300); // Stagger downloads
+                    window.open(url, '_blank');
+                }, index * 500); // Slower delay for mobile
             });
             
-            alert(`Started downloading ${imageUrls.length} images. Check your downloads folder.`);
+            if (imageUrls.length > count) {
+                alert(`Opened first ${count} pages. Use individual buttons below for more pages.`);
+            }
         }
         
         
