@@ -187,15 +187,66 @@
             
             chapterInfo.textContent = `Chapter ${chapter} - ${imageUrls.length} pages`;
             
-            // Simply create img tags for all images
-            mangaImages.innerHTML = imageUrls.map((url, index) => 
-                `<img class="manga-page" 
-                     src="${url}" 
-                     alt="Page ${index + 1}"
-                     loading="lazy"
-                     referrerpolicy="no-referrer"
-                     crossorigin="anonymous">`
-            ).join('');
+            // Create a simple HTML page with all images that opens in new window
+            const htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>One Piece Chapter ${chapter}</title>
+    <style>
+        body { margin: 0; padding: 0; background: #000; }
+        .header { 
+            background: #333; 
+            color: #ff6b35; 
+            padding: 15px; 
+            text-align: center; 
+            position: sticky; 
+            top: 0; 
+            z-index: 100; 
+        }
+        img { 
+            display: block; 
+            width: 100%; 
+            height: auto; 
+            margin: 0; 
+        }
+    </style>
+</head>
+<body>
+    <div class="header">One Piece Chapter ${chapter} - ${imageUrls.length} pages</div>
+    ${imageUrls.map((url, index) => 
+        `<img src="${url}" alt="Page ${index + 1}" loading="lazy">`
+    ).join('')}
+</body>
+</html>`;
+
+            // Create blob URL and open in new window
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const blobUrl = URL.createObjectURL(blob);
+            
+            // Show simple list with a big "Open Chapter" button
+            mangaImages.innerHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <div style="background: #333; padding: 30px; border-radius: 10px; margin: 20px auto; max-width: 500px;">
+                        <h2 style="color: #ff6b35; margin-bottom: 20px;">Chapter Ready!</h2>
+                        <p style="margin-bottom: 30px; color: #ccc;">Found ${imageUrls.length} manga pages</p>
+                        <a href="${blobUrl}" target="_blank" style="
+                            display: inline-block;
+                            background: #ff6b35;
+                            color: white;
+                            text-decoration: none;
+                            padding: 20px 40px;
+                            border-radius: 10px;
+                            font-size: 18px;
+                            font-weight: bold;
+                            margin: 10px;
+                        ">📖 Open Chapter ${chapter}</a>
+                        <div style="margin-top: 20px; font-size: 14px; color: #999;">
+                            Click the button above to open the chapter in a new tab
+                        </div>
+                    </div>
+                </div>
+            `;
         }
         
         function showError(message) {
