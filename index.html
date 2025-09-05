@@ -136,6 +136,23 @@
             height: auto;
             margin: 0 auto 5px;
             background: #111;
+            min-height: 200px;
+            border-radius: 5px;
+        }
+        
+        .manga-panel.loading {
+            background: #111 url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="20" fill="none" stroke="%23ff6b35" stroke-width="3" stroke-dasharray="31.416" stroke-dashoffset="31.416"><animate attributeName="stroke-dasharray" dur="2s" values="0 31.416;15.708 15.708;0 31.416" repeatCount="indefinite"/><animate attributeName="stroke-dashoffset" dur="2s" values="0;-15.708;-31.416" repeatCount="indefinite"/></circle></svg>') center center no-repeat;
+            background-size: 40px 40px;
+        }
+        
+        .image-error {
+            background: #333;
+            color: #ff6b35;
+            text-align: center;
+            padding: 20px;
+            margin: 5px auto;
+            border-radius: 5px;
+            font-size: 14px;
         }
 
         .back-btn {
@@ -454,10 +471,54 @@
         
         function displayManga(imageUrls, chapter) {
             const content = document.getElementById('manga-content');
-            content.innerHTML = imageUrls.map((url, index) => 
-                `<img class="manga-panel" src="${url}" alt="Page ${index + 1}" loading="lazy" 
-                      onerror="this.style.display='none'">`
+            
+            // Use image proxy to bypass CORS restrictions
+            const proxiedUrls = imageUrls.map(url => {
+                // Try multiple image proxy services
+                if (url.includes('cdn.readonepiece.com')) {
+                    return `https://images.weserv.nl/?url=${encodeURIComponent(url)}`;
+                }
+                return url;
+            });
+            
+            console.log('Displaying images with proxy:', proxiedUrls.slice(0, 3));
+            
+            content.innerHTML = proxiedUrls.map((url, index) => 
+                `<img class="manga-panel loading" 
+                     src="${url}" 
+                     alt="Page ${index + 1}" 
+                     loading="lazy" 
+                     crossorigin="anonymous"
+                     onerror="handleImageError(this, ${index}, '${imageUrls[index]}')"
+                     onload="handleImageLoad(this, ${index + 1})">`
             ).join('');
+        }
+        
+        function handleImageLoad(img, pageNum) {
+            console.log(`Image ${pageNum} loaded successfully`);
+            img.classList.remove('loading');
+        }
+        
+        function handleImageError(img, index, originalUrl) {
+            console.log(`Image ${index + 1} failed to load, trying fallback...`);
+            
+            // Try different proxy services
+            const proxies = [
+                `https://cors-anywhere.herokuapp.com/${originalUrl}`,
+                `https://api.allorigins.win/raw?url=${encodeURIComponent(originalUrl)}`,
+                originalUrl // Last resort - direct URL
+            ];
+            
+            let proxyIndex = parseInt(img.dataset.proxyIndex || '0') + 1;
+            
+            if (proxyIndex < proxies.length) {
+                img.dataset.proxyIndex = proxyIndex;
+                img.src = proxies[proxyIndex];
+                console.log(`Trying proxy ${proxyIndex} for image ${index + 1}:`, proxies[proxyIndex]);
+            } else {
+                console.log(`All proxies failed for image ${index + 1}`);
+                img.outerHTML = `<div class="image-error">Failed to load page ${index + 1}<br>Try refreshing or use a different chapter</div>`;
+            }
         }
         
         function showError(message) {
