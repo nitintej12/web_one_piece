@@ -3,778 +3,195 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>One Piece Manga Reader</title>
+    <title>One Piece Reader</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
         body {
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #222;
             color: white;
         }
 
         .container {
             text-align: center;
-            padding: 2rem;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 20px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            max-width: 500px;
-            width: 90%;
-        }
-
-        .title {
-            font-size: 2.5rem;
-            font-weight: bold;
-            margin-bottom: 1rem;
-            color: #ff6b35;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-        }
-
-        .subtitle {
-            font-size: 1.1rem;
-            margin-bottom: 2rem;
-            opacity: 0.9;
-        }
-
-        .input-group {
-            margin-bottom: 2rem;
-        }
-
-        .input-label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-size: 1.1rem;
-            font-weight: 500;
-        }
-
-        .episode-input {
-            width: 200px;
-            padding: 1rem;
-            font-size: 1.2rem;
-            border: none;
+            max-width: 400px;
+            margin: 50px auto;
+            padding: 30px;
+            background: #333;
             border-radius: 10px;
-            background: rgba(255, 255, 255, 0.9);
-            color: #333;
+        }
+
+        h1 {
+            color: #ff6b35;
+            margin-bottom: 20px;
+        }
+
+        input {
+            padding: 10px;
+            font-size: 18px;
+            width: 120px;
             text-align: center;
-            outline: none;
-            transition: all 0.3s ease;
+            border: none;
+            border-radius: 5px;
+            margin: 10px;
         }
 
-        .episode-input:focus {
-            background: rgba(255, 255, 255, 1);
-            box-shadow: 0 0 20px rgba(255, 107, 53, 0.3);
-            transform: translateY(-2px);
-        }
-
-        .read-button {
-            background: linear-gradient(45deg, #ff6b35, #f7931e);
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            background: #ff6b35;
             color: white;
             border: none;
-            padding: 1rem 2rem;
-            font-size: 1.2rem;
-            font-weight: bold;
-            border-radius: 50px;
+            border-radius: 5px;
             cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(255, 107, 53, 0.3);
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            margin: 10px;
         }
 
-        .read-button:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 6px 20px rgba(255, 107, 53, 0.4);
+        button:hover {
+            background: #e55a2e;
         }
 
-        .read-button:active {
-            transform: translateY(-1px);
-        }
-
-        .read-button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .loading {
-            display: none;
-            margin-top: 1rem;
-            font-size: 1rem;
-            opacity: 0.8;
-        }
-
-        .spinner {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top-color: #ff6b35;
-            animation: spin 1s ease-in-out infinite;
-            margin-right: 0.5rem;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .error-message {
+        .error {
             color: #ff4444;
-            background: rgba(255, 68, 68, 0.1);
-            padding: 1rem;
-            border-radius: 10px;
-            margin-top: 1rem;
-            border: 1px solid rgba(255, 68, 68, 0.3);
-            display: none;
+            margin-top: 20px;
         }
 
         .manga-viewer {
             display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #000;
-            z-index: 1000;
-            overflow-y: auto;
         }
 
-        .back-button {
+        .manga-viewer.active {
+            display: block;
+        }
+
+        .manga-panel {
+            display: block;
+            width: 100%;
+            max-width: 800px;
+            height: auto;
+            margin: 0 auto 10px;
+        }
+
+        .back-btn {
             position: fixed;
             top: 20px;
             left: 20px;
-            background: rgba(255, 107, 53, 0.9);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 25px;
-            cursor: pointer;
-            z-index: 1001;
-            font-weight: bold;
-            backdrop-filter: blur(10px);
-            transition: all 0.3s ease;
+            z-index: 100;
         }
 
-        .back-button:hover {
-            background: rgba(255, 107, 53, 1);
-            transform: translateY(-2px);
-        }
-
-        /* Responsive design */
-        @media (max-width: 600px) {
-            .title {
-                font-size: 2rem;
-            }
-            
-            .container {
-                padding: 1.5rem;
-                margin: 1rem;
-            }
-            
-            .episode-input {
-                width: 100%;
-                max-width: 250px;
-            }
+        .loading {
+            display: none;
+            margin-top: 20px;
         }
     </style>
 </head>
 <body>
-    <div class="container" id="inputContainer">
-        <h1 class="title">🏴‍☠️ One Piece</h1>
-        <p class="subtitle">Digital Colored Comics Reader</p>
-        
-        <div class="input-group">
-            <label class="input-label" for="episodeInput">Enter Chapter Number:</label>
-            <input 
-                type="number" 
-                id="episodeInput" 
-                class="episode-input" 
-                placeholder="e.g. 1050" 
-                min="1" 
-                max="9999"
-                autocomplete="off"
-            >
+    <div class="container" id="home">
+        <h1>One Piece Reader</h1>
+        <div>
+            <input type="number" id="chapter" placeholder="Chapter #" min="1">
+            <br>
+            <button onclick="readChapter()">Read Chapter</button>
         </div>
-        
-        <button class="read-button" id="readButton" onclick="loadChapter()">
-            Start Reading
-        </button>
-        
-        <div class="loading" id="loading">
-            <div class="spinner"></div>
-            Loading chapter...
-        </div>
-        
-        <div class="error-message" id="errorMessage"></div>
+        <div class="loading" id="loading">Loading...</div>
+        <div class="error" id="error"></div>
     </div>
 
-    <div class="manga-viewer" id="mangaViewer">
-        <button class="back-button" onclick="goBack()">← Back to Search</button>
-        <div id="mangaContent"></div>
+    <div class="manga-viewer" id="viewer">
+        <button class="back-btn" onclick="goHome()">← Back</button>
+        <div id="manga-content"></div>
     </div>
 
     <script>
-        const BASE_URL = "https://ww12.readonepiece.com/chapter/one-piece-digital-colored-comics-chapter-";
-        const MANGA_NAME = "One Piece - Digital Colored Comics";
-
-        // Configuration for One Piece site
-        const CONFIG = {
-            imageSelectors: [
-                'img[src*="cdn"]',
-                'img[src*="chapter"]', 
-                'img[src*="onepiece"]',
-                '.reading-content img',
-                '.chapter-content img',
-                '#readerarea img',
-                '.page-break img',
-                'img[src*=".jpg"]',
-                'img[src*=".png"]',
-                'img[src*=".webp"]'
-            ],
+        async function readChapter() {
+            const chapter = document.getElementById('chapter').value;
+            const loading = document.getElementById('loading');
+            const error = document.getElementById('error');
+            const home = document.getElementById('home');
+            const viewer = document.getElementById('viewer');
             
-            adSelectors: [
-                '[class*="ad"]',
-                '[id*="ad"]',
-                '[class*="banner"]',
-                '[src*="ads"]',
-                '[src*="banner"]',
-                '.advertisement',
-                '.google-ad',
-                '[src*="popup"]'
-            ]
-        };
-
-        // Focus on input when page loads
-        window.addEventListener('load', () => {
-            document.getElementById('episodeInput').focus();
-        });
-
-        // Allow Enter key to submit
-        document.getElementById('episodeInput').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                loadChapter();
-            }
-        });
-
-        async function loadChapter() {
-            const episodeInput = document.getElementById('episodeInput');
-            const loadingDiv = document.getElementById('loading');
-            const errorDiv = document.getElementById('errorMessage');
-            const readButton = document.getElementById('readButton');
-            
-            // Get and validate episode number
-            let episode = episodeInput.value.trim();
-            
-            if (!episode) {
-                showError('Please enter a chapter number');
+            if (!chapter) {
+                error.textContent = 'Please enter a chapter number';
                 return;
             }
             
-            episode = String(episode).padStart(3, '0');
-            
-            // Show loading state
-            loadingDiv.style.display = 'block';
-            errorDiv.style.display = 'none';
-            readButton.disabled = true;
-            readButton.textContent = 'Loading...';
+            loading.style.display = 'block';
+            error.textContent = '';
             
             try {
-                console.log(`Loading One Piece Chapter ${episode}...`);
+                const chapterNum = String(chapter).padStart(3, '0');
+                const url = "https://ww12.readonepiece.com/chapter/one-piece-digital-colored-comics-chapter-" + chapterNum + "/";
                 
-                // Fetch manga page with CORS proxy
-                let url = BASE_URL + episode + "/";
-                console.log("Fetching:", url);
-                
-                // Using a CORS proxy service
-                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-                
-                const response = await fetch(proxyUrl);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                
+                // Using CORS proxy
+                const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
                 const data = await response.json();
-                let html = data.contents;
+                const html = data.contents;
                 
                 // Extract image URLs
-                let imageUrls = extractImageUrls(html, url);
+                const imageUrls = extractImages(html);
                 
                 if (imageUrls.length === 0) {
-                    console.log("No images found, trying alternative extraction...");
-                    imageUrls = await tryAlternativeExtraction(html, url);
+                    throw new Error('No images found for this chapter');
                 }
                 
-                console.log(`Found ${imageUrls.length} panels`);
+                // Display manga
+                displayManga(imageUrls, chapter);
+                home.style.display = 'none';
+                viewer.classList.add('active');
                 
-                if (imageUrls.length === 0) {
-                    throw new Error('No manga pages found. Please check if this chapter exists.');
-                }
-                
-                // Create and show manga HTML
-                displayManga(imageUrls, episode);
-                
-            } catch (error) {
-                console.error("Error:", error);
-                showError(error.message);
+            } catch (err) {
+                error.textContent = 'Error: ' + err.message;
             } finally {
-                // Reset loading state
-                loadingDiv.style.display = 'none';
-                readButton.disabled = false;
-                readButton.textContent = 'Start Reading';
+                loading.style.display = 'none';
             }
         }
-
-        function extractImageUrls(html, baseUrl) {
-            let imageUrls = [];
+        
+        function extractImages(html) {
+            const imageUrls = [];
             
-            // Method 1: Look for common manga image patterns
-            let patterns = [
-                /https?:\/\/[^"'\s]+\.(?:jpg|jpeg|png|webp|gif)(?:\?[^"'\s]*)?/gi,
-                /src=["']([^"']*\.(?:jpg|jpeg|png|webp|gif)(?:\?[^"']*)?[^"']*)["']/gi,
-                /data-src=["']([^"']*\.(?:jpg|jpeg|png|webp|gif)(?:\?[^"']*)?[^"']*)["']/gi,
-                /data-lazy-src=["']([^"']*\.(?:jpg|jpeg|png|webp|gif)(?:\?[^"']*)?[^"']*)["']/gi
+            // Find all image URLs
+            const patterns = [
+                /https?:\/\/[^"'\s]+\.(?:jpg|jpeg|png|webp)/gi,
+                /src=["']([^"']*\.(?:jpg|jpeg|png|webp)[^"']*)["']/gi
             ];
             
             patterns.forEach(pattern => {
-                let matches = html.matchAll(pattern);
-                for (let match of matches) {
-                    let url = match[1] || match[0];
-                    if (url && isValidMangaImage(url) && !isAdImage(url)) {
-                        imageUrls.push(cleanUrl(url, baseUrl));
-                    }
-                }
-            });
-            
-            // Method 2: Look for script-embedded image URLs
-            let scriptMatches = html.match(/<script[^>]*>[\s\S]*?<\/script>/gi);
-            if (scriptMatches) {
-                scriptMatches.forEach(script => {
-                    let urlMatches = script.match(/["']https?:\/\/[^"']*\.(?:jpg|jpeg|png|webp)(?:\?[^"']*)?["']/gi);
-                    if (urlMatches) {
-                        urlMatches.forEach(url => {
-                            url = url.replace(/["']/g, '');
-                            if (isValidMangaImage(url) && !isAdImage(url)) {
-                                imageUrls.push(url);
-                            }
-                        });
-                    }
-                });
-            }
-            
-            // Remove duplicates and sort
-            imageUrls = [...new Set(imageUrls)];
-            
-            // Sort by potential page number in URL
-            imageUrls.sort((a, b) => {
-                let aNum = extractPageNumber(a);
-                let bNum = extractPageNumber(b);
-                return aNum - bNum;
-            });
-            
-            return imageUrls;
-        }
-
-        async function tryAlternativeExtraction(html, baseUrl) {
-            let imageUrls = [];
-            
-            // Look for any image URLs in the entire HTML
-            let allImageMatches = html.match(/https?:\/\/[^\s"'<>]+\.(?:jpg|jpeg|png|webp)/gi);
-            
-            if (allImageMatches) {
-                allImageMatches.forEach(url => {
-                    if (isValidMangaImage(url) && !isAdImage(url)) {
+                const matches = html.matchAll(pattern);
+                for (const match of matches) {
+                    const url = match[1] || match[0];
+                    if (url && !isAd(url)) {
                         imageUrls.push(url);
                     }
-                });
-            }
-            
-            // If still no images, try to find them in any format
-            if (imageUrls.length === 0) {
-                let anyImagePattern = /(?:src|data-src|data-lazy-src)=["']([^"']+)["']/gi;
-                let matches = html.matchAll(anyImagePattern);
-                
-                for (let match of matches) {
-                    let url = match[1];
-                    if (url && (url.includes('.jpg') || url.includes('.png') || url.includes('.webp'))) {
-                        imageUrls.push(cleanUrl(url, baseUrl));
-                    }
                 }
-            }
+            });
             
-            return [...new Set(imageUrls)];
+            return [...new Set(imageUrls)]; // Remove duplicates
         }
-
-        function isAdImage(src) {
-            let adPatterns = [
-                'ad', 'banner', 'sponsor', 'promo', 'popup', 
-                'advertisement', 'adsense', 'doubleclick',
-                'google', 'facebook', 'twitter'
-            ];
-            
-            return adPatterns.some(pattern => 
-                src.toLowerCase().includes(pattern)
-            );
+        
+        function isAd(url) {
+            const adKeywords = ['ad', 'banner', 'sponsor', 'popup'];
+            return adKeywords.some(keyword => url.toLowerCase().includes(keyword));
         }
-
-        function isValidMangaImage(src) {
-            // Must be a valid image format
-            let validExtensions = ['.jpg', '.jpeg', '.png', '.webp'];
-            let hasValidExt = validExtensions.some(ext => 
-                src.toLowerCase().includes(ext)
-            );
-            
-            if (!hasValidExt) return false;
-            
-            // Should be reasonably large (avoid small icons/buttons)
-            let sizeIndicators = ['thumb', 'icon', 'button', 'logo'];
-            let isSmallImage = sizeIndicators.some(indicator =>
-                src.toLowerCase().includes(indicator)
-            );
-            
-            return !isSmallImage;
-        }
-
-        function extractPageNumber(url) {
-            // Try to extract page number from URL for sorting
-            let matches = url.match(/(?:page|p)[\-_]?(\d+)/i) || 
-                          url.match(/(\d+)\.(?:jpg|png|webp)/i) ||
-                          url.match(/\/(\d+)[^\/]*$/);
-            
-            return matches ? parseInt(matches[1]) : 999;
-        }
-
-        function cleanUrl(url, baseUrl) {
-            if (url.startsWith('//')) {
-                return 'https:' + url;
-            } else if (url.startsWith('/')) {
-                let domain = baseUrl.match(/https?:\/\/[^\/]+/)[0];
-                return domain + url;
-            }
-            return url;
-        }
-
-        function displayManga(imageUrls, episode) {
-            const mangaContent = document.getElementById('mangaContent');
-            const mangaViewer = document.getElementById('mangaViewer');
-            const inputContainer = document.getElementById('inputContainer');
-            
-            // Create manga HTML
-            mangaContent.innerHTML = createMangaHTML(imageUrls, episode);
-            
-            // Show manga viewer and hide input
-            inputContainer.style.display = 'none';
-            mangaViewer.style.display = 'block';
-            
-            // Scroll to top
-            mangaViewer.scrollTo(0, 0);
-        }
-
-        function createMangaHTML(imageUrls, episode) {
-            return `
-                <style>
-                    .manga-container {
-                        max-width: 100%;
-                        margin: 0 auto;
-                        margin-top: 60px;
-                    }
-                    
-                    .panel {
-                        display: block;
-                        width: 100%;
-                        max-width: 100%;
-                        height: auto;
-                        margin: 0;
-                        image-rendering: -webkit-optimize-contrast;
-                        background: #111;
-                    }
-                    
-                    @media screen and (min-width: 768px) {
-                        .manga-container {
-                            max-width: 80%;
-                            padding: 0 40px;
-                        }
-                        
-                        .panel {
-                            max-height: 90vh;
-                            width: auto;
-                            margin: 0 auto;
-                            object-fit: contain;
-                            border-radius: 4px;
-                            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-                        }
-                        
-                        .panel-container {
-                            display: flex;
-                            justify-content: center;
-                            align-items: center;
-                            min-height: 90vh;
-                            padding: 20px 0;
-                        }
-                    }
-                    
-                    .panel-container {
-                        margin-bottom: 1px;
-                        position: relative;
-                        background: #111;
-                    }
-                    
-                    .panel-loading {
-                        position: absolute;
-                        top: 50%;
-                        left: 50%;
-                        transform: translate(-50%, -50%);
-                        color: #666;
-                        font-size: 14px;
-                        pointer-events: none;
-                    }
-                    
-                    .progress-bar {
-                        position: fixed;
-                        top: 0;
-                        left: 0;
-                        width: 0%;
-                        height: 3px;
-                        background: linear-gradient(90deg, #ff6b35, #f7931e);
-                        transition: width 0.3s ease;
-                        z-index: 101;
-                        box-shadow: 0 0 10px rgba(255, 107, 53, 0.5);
-                    }
-                    
-                    .controls {
-                        position: fixed;
-                        bottom: 30px;
-                        right: 30px;
-                        display: flex;
-                        gap: 10px;
-                        z-index: 1000;
-                    }
-                    
-                    .btn {
-                        background: rgba(255, 107, 53, 0.9);
-                        color: white;
-                        border: none;
-                        padding: 12px 16px;
-                        border-radius: 25px;
-                        font-size: 14px;
-                        font-weight: 600;
-                        backdrop-filter: blur(10px);
-                        box-shadow: 0 4px 15px rgba(255, 107, 53, 0.3);
-                        cursor: pointer;
-                        transition: all 0.3s ease;
-                        min-width: 50px;
-                        text-align: center;
-                    }
-                    
-                    .btn:hover, .btn:active {
-                        background: rgba(255, 107, 53, 1);
-                        transform: translateY(-2px);
-                        box-shadow: 0 6px 20px rgba(255, 107, 53, 0.4);
-                    }
-                    
-                    .page-counter {
-                        position: fixed;
-                        bottom: 30px;
-                        left: 30px;
-                        background: rgba(0,0,0,0.8);
-                        color: #ff6b35;
-                        padding: 10px 15px;
-                        border-radius: 20px;
-                        font-size: 13px;
-                        font-weight: 600;
-                        backdrop-filter: blur(10px);
-                        border: 1px solid rgba(255, 107, 53, 0.3);
-                        z-index: 1000;
-                    }
-                    
-                    .loading-message {
-                        text-align: center;
-                        color: #ccc;
-                        padding: 40px 20px;
-                        font-size: 16px;
-                    }
-                    
-                    .header {
-                        position: fixed;
-                        top: 0;
-                        left: 0;
-                        right: 0;
-                        background: rgba(0,0,0,0.9);
-                        color: #ff6b35;
-                        padding: 15px 30px;
-                        font-size: 18px;
-                        font-weight: 600;
-                        text-align: center;
-                        backdrop-filter: blur(10px);
-                        border-bottom: 1px solid rgba(255, 107, 53, 0.3);
-                        z-index: 1000;
-                    }
-                </style>
-                
-                <div class="header">${MANGA_NAME} - Chapter ${episode}</div>
-                <div class="progress-bar" id="progress"></div>
-                
-                <div class="manga-container" id="mangaContainer">
-                    ${imageUrls.length > 0 ? imageUrls.map((url, i) => `
-                        <div class="panel-container">
-                            <div class="panel-loading">Loading page ${i + 1}...</div>
-                            <img class="panel" 
-                                 src="${url}" 
-                                 alt="Page ${i + 1}"
-                                 data-index="${i}"
-                                 loading="lazy"
-                                 onload="handleImageLoad(this)"
-                                 onerror="handleImageError(this, ${i})">
-                        </div>
-                    `).join('') : '<div class="loading-message">No manga pages found. Please check the chapter number.</div>'}
-                </div>
-                
-                <div class="page-counter" id="pageCounter">
-                    Page 1 / ${imageUrls.length}
-                </div>
-                
-                <div class="controls">
-                    <button class="btn" onclick="scrollToTop()" title="Go to top">↑</button>
-                    <button class="btn" onclick="scrollToBottom()" title="Go to end">↓</button>
-                </div>
-                
-                <script>
-                    let loadedImages = 0;
-                    let totalImages = ${imageUrls.length};
-                    let currentPage = 1;
-                    
-                    function handleImageLoad(img) {
-                        loadedImages++;
-                        updateProgress();
-                        img.style.opacity = '1';
-                        let loader = img.parentElement.querySelector('.panel-loading');
-                        if (loader) loader.style.display = 'none';
-                    }
-                    
-                    function handleImageError(img, index) {
-                        console.log('Failed to load page:', index + 1);
-                        img.style.display = 'none';
-                        let loader = img.parentElement.querySelector('.panel-loading');
-                        if (loader) {
-                            loader.textContent = 'Failed to load page ' + (index + 1);
-                            loader.style.color = '#ff4444';
-                        }
-                        loadedImages++;
-                        updateProgress();
-                    }
-                    
-                    function updateProgress() {
-                        let progress = totalImages > 0 ? (loadedImages / totalImages) * 100 : 100;
-                        document.getElementById('progress').style.width = progress + '%';
-                        
-                        if (progress >= 100) {
-                            setTimeout(() => {
-                                let progressBar = document.getElementById('progress');
-                                if (progressBar) progressBar.style.opacity = '0';
-                            }, 2000);
-                        }
-                    }
-                    
-                    function scrollToTop() {
-                        document.getElementById('mangaViewer').scrollTo({ top: 0, behavior: 'smooth' });
-                    }
-                    
-                    function scrollToBottom() {
-                        let viewer = document.getElementById('mangaViewer');
-                        viewer.scrollTo({ top: viewer.scrollHeight, behavior: 'smooth' });
-                    }
-                    
-                    function updatePageCounter() {
-                        if (totalImages === 0) return;
-                        
-                        let viewer = document.getElementById('mangaViewer');
-                        let scrollPosition = viewer.scrollTop;
-                        let windowHeight = viewer.clientHeight;
-                        let documentHeight = viewer.scrollHeight;
-                        
-                        if (documentHeight <= windowHeight) {
-                            currentPage = totalImages;
-                        } else {
-                            let scrollPercent = scrollPosition / (documentHeight - windowHeight);
-                            currentPage = Math.max(1, Math.min(totalImages, Math.ceil(scrollPercent * totalImages)));
-                        }
-                        
-                        let counter = document.getElementById('pageCounter');
-                        if (counter) {
-                            counter.textContent = 'Page ' + currentPage + ' / ' + totalImages;
-                        }
-                    }
-                    
-                    let scrollTimeout;
-                    document.getElementById('mangaViewer').addEventListener('scroll', () => {
-                        if (scrollTimeout) clearTimeout(scrollTimeout);
-                        scrollTimeout = setTimeout(updatePageCounter, 50);
-                    });
-                    
-                    document.addEventListener('keydown', (e) => {
-                        if (document.getElementById('mangaViewer').style.display !== 'block') return;
-                        
-                        switch(e.key) {
-                            case 'ArrowUp':
-                            case 'k':
-                                document.getElementById('mangaViewer').scrollBy(0, -100);
-                                e.preventDefault();
-                                break;
-                            case 'ArrowDown':
-                            case 'j':
-                                document.getElementById('mangaViewer').scrollBy(0, 100);
-                                e.preventDefault();
-                                break;
-                            case 'Home':
-                                scrollToTop();
-                                e.preventDefault();
-                                break;
-                            case 'End':
-                                scrollToBottom();
-                                e.preventDefault();
-                                break;
-                        }
-                    });
-                    
-                    updatePageCounter();
-                    console.log('One Piece manga reader loaded with ' + totalImages + ' pages');
-                    
-                    if (totalImages === 0) {
-                        updateProgress();
-                    }
-                </script>
+        
+        function displayManga(imageUrls, chapter) {
+            const content = document.getElementById('manga-content');
+            content.innerHTML = `
+                <h2 style="text-align: center; color: #ff6b35; margin: 20px;">One Piece Chapter ${chapter}</h2>
+                ${imageUrls.map(url => `<img class="manga-panel" src="${url}" alt="Manga panel" loading="lazy">`).join('')}
             `;
         }
-
-        function showError(message) {
-            const errorDiv = document.getElementById('errorMessage');
-            errorDiv.textContent = message;
-            errorDiv.style.display = 'block';
+        
+        function goHome() {
+            document.getElementById('home').style.display = 'block';
+            document.getElementById('viewer').classList.remove('active');
+            document.getElementById('chapter').value = '';
         }
-
-        function goBack() {
-            const mangaViewer = document.getElementById('mangaViewer');
-            const inputContainer = document.getElementById('inputContainer');
-            
-            mangaViewer.style.display = 'none';
-            inputContainer.style.display = 'flex';
-            
-            // Clear the input for next use
-            document.getElementById('episodeInput').value = '';
-            document.getElementById('episodeInput').focus();
-        }
+        
+        // Enter key support
+        document.getElementById('chapter').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') readChapter();
+        });
     </script>
 </body>
 </html>
