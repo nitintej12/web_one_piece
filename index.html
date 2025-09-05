@@ -246,26 +246,54 @@
                 
                 console.log('Fetching:', sourceUrl);
                 
-                // Try multiple CORS proxies
+                // Try multiple CORS proxies and methods
                 let html = null;
+                let success = false;
+                
+                // Method 1: Try CORS proxies
                 const proxies = [
                     `https://api.allorigins.win/get?url=${encodeURIComponent(sourceUrl)}`,
-                    `https://corsproxy.io/?${encodeURIComponent(sourceUrl)}`,
-                    `https://cors-anywhere.herokuapp.com/${sourceUrl}`
+                    `https://corsproxy.io/?${encodeURIComponent(sourceUrl)}`
                 ];
                 
                 for (const proxyUrl of proxies) {
                     try {
                         console.log('Trying proxy:', proxyUrl);
-                        const response = await fetch(proxyUrl);
+                        const response = await fetch(proxyUrl, {
+                            headers: {
+                                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+                            }
+                        });
+                        
                         if (response.ok) {
                             const data = await response.json();
-                            html = data.contents || data;
-                            if (html) break;
+                            html = data.contents || data.data || data;
+                            console.log('Got HTML length:', html ? html.length : 'null');
+                            if (html && html.length > 1000) {
+                                success = true;
+                                break;
+                            }
                         }
                     } catch (proxyError) {
                         console.log('Proxy failed:', proxyError.message);
                         continue;
+                    }
+                }
+                
+                // Method 2: Try direct fetch (might work in some browsers)
+                if (!success) {
+                    try {
+                        console.log('Trying direct fetch...');
+                        const response = await fetch(sourceUrl, {
+                            mode: 'no-cors',
+                            headers: {
+                                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+                            }
+                        });
+                        html = await response.text();
+                        success = true;
+                    } catch (directError) {
+                        console.log('Direct fetch failed:', directError.message);
                     }
                 }
                 
@@ -280,7 +308,26 @@
                 console.log('Found images:', imageUrls.length, imageUrls);
                 
                 if (imageUrls.length === 0) {
-                    throw new Error(`No manga pages found for chapter ${chapter}. This chapter might not exist or use a different format.`);
+                    console.log('No images found. Trying fallback patterns...');
+                    
+                    // Try to find ANY images for debugging
+                    const allImages = html.match(/https?:\/\/[^"'\s<>]+\.(?:jpg|jpeg|png|webp)/gi) || [];
+                    console.log('All images in page:', allImages.slice(0, 10));
+                    
+                    if (allImages.length > 0) {
+                        // Use the first few images as fallback
+                        const fallbackImages = allImages.slice(0, 5).filter(url => !url.includes('logo'));
+                        if (fallbackImages.length > 0) {
+                            console.log('Using fallback images:', fallbackImages);
+                            displayManga(fallbackImages, chapter);
+                            home.style.display = 'none';
+                            viewer.classList.add('active');
+                            document.getElementById('chapterTitle').textContent = `Chapter ${chapter} (Fallback)`;
+                            return;
+                        }
+                    }
+                    
+                    throw new Error(`No manga pages found for chapter ${chapter}. Try a different chapter number like 1000 or 1050.`);
                 }
                 
                 // Display manga
@@ -304,7 +351,9 @@
         function extractImages(html, baseUrl) {
             const imageUrls = [];
             
-            // Multiple extraction patterns
+            console.log('HTML sample:', html.substring(0, 500));
+            
+            // Multiple extraction patterns - be very aggressive
             const patterns = [
                 // Direct image URLs
                 /https?:\/\/[^"'\s<>]+\.(?:jpg|jpeg|png|webp)(?:\?[^"'\s<>]*)?/gi,
@@ -313,23 +362,49 @@
                 // Data-src for lazy loading
                 /data-src=["']([^"']*\.(?:jpg|jpeg|png|webp)(?:\?[^"']*)?[^"']*)["']/gi,
                 // Data-lazy-src
-                /data-lazy-src=["']([^"']*\.(?:jpg|jpeg|png|webp)(?:\?[^"']*)?[^"']*)["']/gi
+                /data-lazy-src=["']([^"']*\.(?:jpg|jpeg|png|webp)(?:\?[^"']*)?[^"']*)["']/gi,
+                // Data-original
+                /data-original=["']([^"']*\.(?:jpg|jpeg|png|webp)(?:\?[^"']*)?[^"']*)["']/gi,
+                // Any attribute containing image URLs
+                /=["']([^"']*https?:\/\/[^"']*\.(?:jpg|jpeg|png|webp)(?:\?[^"']*)?[^"']*)["']/gi
             ];
             
-            patterns.forEach(pattern => {
+            patterns.forEach((pattern, index) => {
+                console.log(`Trying pattern ${index + 1}...`);
                 const matches = html.matchAll(pattern);
+                let patternCount = 0;
                 for (const match of matches) {
                     let url = match[1] || match[0];
                     url = cleanUrl(url, baseUrl);
                     
                     if (url && isValidMangaImage(url)) {
                         imageUrls.push(url);
+                        patternCount++;
                     }
                 }
+                console.log(`Pattern ${index + 1} found ${patternCount} images`);
             });
+            
+            // Also look for JavaScript variables containing image arrays
+            const jsImagePattern = /(?:images|pages|imgs)\s*[:=]\s*\[([^\]]+)\]/gi;
+            const jsMatches = html.matchAll(jsImagePattern);
+            for (const match of jsMatches) {
+                const jsArray = match[1];
+                const urlMatches = jsArray.match(/["']([^"']*\.(?:jpg|jpeg|png|webp)[^"']*)["']/gi);
+                if (urlMatches) {
+                    urlMatches.forEach(url => {
+                        url = url.replace(/["']/g, '');
+                        url = cleanUrl(url, baseUrl);
+                        if (url && isValidMangaImage(url)) {
+                            imageUrls.push(url);
+                        }
+                    });
+                }
+            }
             
             // Remove duplicates and sort
             const uniqueUrls = [...new Set(imageUrls)];
+            console.log('All found URLs:', uniqueUrls);
             
             // Sort by page number if possible
             return uniqueUrls.sort((a, b) => {
@@ -359,11 +434,14 @@
             const hasValidExt = validExts.some(ext => url.toLowerCase().includes(ext));
             if (!hasValidExt) return false;
             
-            // Filter out ads and small images
-            const badKeywords = ['ad', 'banner', 'sponsor', 'popup', 'thumb', 'icon', 'logo', 'button'];
+            // Filter out obvious ads and tiny images - be less strict
+            const badKeywords = ['banner', 'popup', 'logo-', 'favicon'];
             const isAd = badKeywords.some(keyword => url.toLowerCase().includes(keyword));
             
-            return !isAd;
+            // Also skip very small images based on URL patterns
+            const isTinyImage = /\d+x\d+/.test(url) && (/\d{1,2}x\d{1,2}/.test(url));
+            
+            return !isAd && !isTinyImage;
         }
         
         function extractPageNumber(url) {
