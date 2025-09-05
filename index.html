@@ -472,54 +472,81 @@
         function displayManga(imageUrls, chapter) {
             const content = document.getElementById('manga-content');
             
-            // Use image proxy to bypass CORS restrictions
-            const proxiedUrls = imageUrls.map(url => {
-                // Try multiple image proxy services
-                if (url.includes('cdn.readonepiece.com')) {
-                    return `https://images.weserv.nl/?url=${encodeURIComponent(url)}`;
-                }
-                return url;
+            // Show the URLs to user so they can see them
+            console.log('Original image URLs found:', imageUrls);
+            
+            // Create a simple list of clickable image links as fallback
+            content.innerHTML = `
+                <div style="text-align: center; padding: 20px; color: #fff;">
+                    <h3>Found ${imageUrls.length} manga pages for Chapter ${chapter}</h3>
+                    <p style="margin: 20px 0; color: #ff6b35;">Due to CORS restrictions, images cannot be displayed directly.<br>
+                    Click the links below to view each page in a new tab:</p>
+                </div>
+                ${imageUrls.map((url, index) => `
+                    <div style="background: #333; margin: 10px; padding: 15px; border-radius: 8px; text-align: center;">
+                        <div style="color: #ff6b35; font-weight: bold; margin-bottom: 10px;">Page ${index + 1}</div>
+                        <a href="${url}" target="_blank" style="color: #4CAF50; text-decoration: underline; word-break: break-all;">
+                            ${url}
+                        </a>
+                        <div style="margin-top: 10px;">
+                            <button onclick="openInNewTab('${url}')" style="background: #ff6b35; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
+                                Open Page ${index + 1}
+                            </button>
+                        </div>
+                    </div>
+                `).join('')}
+                <div style="text-align: center; padding: 20px; color: #ccc; border-top: 1px solid #555; margin-top: 20px;">
+                    <p><strong>Alternative Solutions:</strong></p>
+                    <div style="margin: 15px 0;">
+                        <button onclick="downloadAllImages(${JSON.stringify(imageUrls)}, ${chapter})" 
+                                style="background: #4CAF50; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; margin: 5px;">
+                            📥 Download All Images
+                        </button>
+                        <button onclick="openAllTabs(${JSON.stringify(imageUrls)})" 
+                                style="background: #2196F3; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; margin: 5px;">
+                            🗂️ Open All in New Tabs
+                        </button>
+                    </div>
+                    <p style="font-size: 14px; margin-top: 15px;">Or use the original script on your local machine for direct viewing.</p>
+                </div>
+            `;
+        }
+        
+        function openInNewTab(url) {
+            window.open(url, '_blank');
+        }
+        
+        function openAllTabs(imageUrls) {
+            if (imageUrls.length > 10) {
+                const confirm = window.confirm(`This will open ${imageUrls.length} tabs. Continue?`);
+                if (!confirm) return;
+            }
+            
+            imageUrls.forEach((url, index) => {
+                setTimeout(() => {
+                    window.open(url, '_blank');
+                }, index * 200); // Delay to avoid browser blocking
+            });
+        }
+        
+        function downloadAllImages(imageUrls, chapter) {
+            console.log('Starting download of', imageUrls.length, 'images');
+            
+            imageUrls.forEach((url, index) => {
+                setTimeout(() => {
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `one_piece_chapter_${chapter}_page_${index + 1}.jpg`;
+                    link.target = '_blank';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }, index * 300); // Stagger downloads
             });
             
-            console.log('Displaying images with proxy:', proxiedUrls.slice(0, 3));
-            
-            content.innerHTML = proxiedUrls.map((url, index) => 
-                `<img class="manga-panel loading" 
-                     src="${url}" 
-                     alt="Page ${index + 1}" 
-                     loading="lazy" 
-                     crossorigin="anonymous"
-                     onerror="handleImageError(this, ${index}, '${imageUrls[index]}')"
-                     onload="handleImageLoad(this, ${index + 1})">`
-            ).join('');
+            alert(`Started downloading ${imageUrls.length} images. Check your downloads folder.`);
         }
         
-        function handleImageLoad(img, pageNum) {
-            console.log(`Image ${pageNum} loaded successfully`);
-            img.classList.remove('loading');
-        }
-        
-        function handleImageError(img, index, originalUrl) {
-            console.log(`Image ${index + 1} failed to load, trying fallback...`);
-            
-            // Try different proxy services
-            const proxies = [
-                `https://cors-anywhere.herokuapp.com/${originalUrl}`,
-                `https://api.allorigins.win/raw?url=${encodeURIComponent(originalUrl)}`,
-                originalUrl // Last resort - direct URL
-            ];
-            
-            let proxyIndex = parseInt(img.dataset.proxyIndex || '0') + 1;
-            
-            if (proxyIndex < proxies.length) {
-                img.dataset.proxyIndex = proxyIndex;
-                img.src = proxies[proxyIndex];
-                console.log(`Trying proxy ${proxyIndex} for image ${index + 1}:`, proxies[proxyIndex]);
-            } else {
-                console.log(`All proxies failed for image ${index + 1}`);
-                img.outerHTML = `<div class="image-error">Failed to load page ${index + 1}<br>Try refreshing or use a different chapter</div>`;
-            }
-        }
         
         function showError(message) {
             const error = document.getElementById('error');
