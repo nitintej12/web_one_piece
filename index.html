@@ -107,10 +107,10 @@
     <script>
         async function loadChapter() {
             const chapter = document.getElementById('chapter').value;
+            const startTime = performance.now(); // Start timing
+            
             const loading = document.getElementById('loading');
             const error = document.getElementById('error');
-            const home = document.getElementById('home');
-            const viewer = document.getElementById('viewer');
             
             if (!chapter) {
                 showError('Please enter a chapter number');
@@ -124,10 +124,22 @@
                 const chapterNum = String(chapter).padStart(3, '0');
                 const sourceUrl = `https://ww12.readonepiece.com/chapter/one-piece-digital-colored-comics-chapter-${chapterNum}/`;
                 
-                console.log('Loading chapter:', chapter);
+                console.log('⚡ Loading chapter:', chapter);
                 
-                // Use the working proxy
-                const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(sourceUrl)}`);
+                // Use the working proxy with speed optimizations
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 sec timeout
+                
+                const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(sourceUrl)}`, {
+                    signal: controller.signal,
+                    headers: {
+                        'Cache-Control': 'max-age=300', // Cache for 5 minutes
+                        'Accept': 'application/json',
+                        'User-Agent': 'OnePieceReader/1.0'
+                    }
+                });
+                clearTimeout(timeoutId);
+                
                 const data = await response.json();
                 const html = data.contents;
                 
@@ -136,7 +148,7 @@
                 }
                 
                 // Extract image URLs
-                const imageUrls = extractImages(html);
+                const imageUrls = extractImages(html, startTime);
                 console.log('Found images:', imageUrls.length);
                 
                 if (imageUrls.length === 0) {
@@ -144,6 +156,7 @@
                 }
                 
                 // Directly open manga viewer - no intermediate screen
+                console.log(`🚀 Total load time: ${(performance.now() - startTime).toFixed(0)}ms`);
                 openMangaViewer(imageUrls, chapter);
                 
             } catch (err) {
@@ -154,94 +167,48 @@
             }
         }
         
-        function extractImages(html) {
-            const imageUrls = [];
+        function extractImages(html, startTime) {
+            console.log('🔍 Extracting images...');
             
-            // Look for CDN images specifically
+            // Fast regex extraction - single pass
             const cdnPattern = /https:\/\/cdn\.readonepiece\.com\/file\/mangap\/[^"'\s]+\.jpg/gi;
-            const matches = html.match(cdnPattern) || [];
+            const matches = [...new Set(html.match(cdnPattern) || [])]; // Remove duplicates immediately
             
-            matches.forEach(url => {
-                if (!imageUrls.includes(url)) {
-                    imageUrls.push(url);
-                }
-            });
+            console.log(`📸 Found ${matches.length} images in ${(performance.now() - startTime).toFixed(0)}ms`);
             
-            // Sort by page number
-            return imageUrls.sort((a, b) => {
-                const aNum = parseInt(a.match(/\/(\d+)\.jpg/)?.[1] || '999');
-                const bNum = parseInt(b.match(/\/(\d+)\.jpg/)?.[1] || '999');
+            // Fast sort using numeric extraction
+            return matches.sort((a, b) => {
+                const aNum = parseInt(a.split('/').pop().split('.')[0]) || 999;
+                const bNum = parseInt(b.split('/').pop().split('.')[0]) || 999;
                 return aNum - bNum;
             });
         }
         
         function openMangaViewer(imageUrls, chapter) {
-            // Create optimized HTML for ultra-fast loading
-            const htmlContent = `<!DOCTYPE html>
-<html>
-<head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>One Piece Chapter ${chapter}</title>
-    <style>
-        body { 
-            margin: 0; 
-            padding: 0; 
-            background: #000; 
-            font-family: Arial, sans-serif;
-        }
-        .header { 
-            background: #222; 
-            color: #ff6b35; 
-            padding: 10px; 
-            text-align: center; 
-            position: fixed; 
-            top: 0; 
-            left: 0;
-            right: 0;
-            z-index: 100; 
-            font-size: 16px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
-        }
-        .content { 
-            padding-top: 50px; 
-        }
-        .manga-img { 
-            display: block; 
-            width: 100%; 
-            height: auto; 
-            margin: 2px 0;
-            max-width: 1000px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-        .page-num {
-            background: #333;
-            color: #ff6b35;
-            text-align: center;
-            padding: 5px;
-            font-size: 12px;
-            margin: 10px auto 2px;
-            max-width: 1000px;
-        }
-    </style>
-</head>
-<body>
-    <div class="header">📖 One Piece Chapter ${chapter} - ${imageUrls.length} pages</div>
-    <div class="content">
-        ${imageUrls.map((url, index) => 
-            `<div class="page-num">Page ${index + 1}</div><img class="manga-img" src="${url}" alt="Page ${index + 1}">`
-        ).join('')}
-    </div>
-</body>
-</html>`;
+            console.log('🎨 Generating viewer...');
+            
+            // Pre-build image HTML for speed
+            const imageHTML = imageUrls.map((url, index) => 
+                `<div class="p">Page ${index + 1}</div><img class="img" src="${url}" alt="Page ${index + 1}">`
+            ).join('');
+            
+            // Minified HTML for faster blob creation
+            const htmlContent = `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>One Piece Chapter ${chapter}</title><style>body{margin:0;padding:0;background:#000;font-family:Arial}
+.header{background:#222;color:#ff6b35;padding:10px;text-align:center;position:fixed;top:0;left:0;right:0;z-index:100;font-size:16px;box-shadow:0 2px 5px rgba(0,0,0,0.5)}
+.content{padding-top:50px}
+.img{display:block;width:100%;height:auto;margin:2px 0;max-width:1000px;margin-left:auto;margin-right:auto}
+.p{background:#333;color:#ff6b35;text-align:center;padding:5px;font-size:12px;margin:10px auto 2px;max-width:1000px}</style></head>
+<body><div class="header">📖 One Piece Chapter ${chapter} - ${imageUrls.length} pages</div><div class="content">${imageHTML}</div></body></html>`;
 
-            // Create and open immediately - no delays
+            // Fast blob creation and immediate open
             const blob = new Blob([htmlContent], { type: 'text/html' });
             const blobUrl = URL.createObjectURL(blob);
             window.open(blobUrl, '_blank');
             
-            // Clean up the blob URL after a short delay
-            setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+            // Cleanup
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 500);
+            
+            console.log('✅ Manga viewer opened!');
         }
         
         function showError(message) {
